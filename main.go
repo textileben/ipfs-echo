@@ -32,6 +32,10 @@ var (
 		"version",
 		"Display binary version.",
 	).Default("False").Bool()
+	durationTimeout = kingpin.Flag(
+		"timeout",
+		"How long to wait before failing a connection.",
+	).Default("10").Int()
 )
 
 func main() {
@@ -76,7 +80,9 @@ func runEcho() {
 
 		rr := metrics.NewIpfsEcho(msg)
 		rr.Started()
-		remoteShell := shell.NewShellWithClient(*remoteAPI, &http.Client{Timeout: 5 * time.Second})
+		remoteShell := shell.NewShellWithClient(*remoteAPI, &http.Client{
+			Timeout: time.Duration(*durationTimeout) * time.Second,
+		})
 
 		cid, err := remoteShell.AddWithOpts(strings.NewReader(msg), false, false) // Don't pin, don't use raw leaves
 		if err != nil {
@@ -117,7 +123,7 @@ func runEcho() {
 				metrics.IpfsEchoAttempts.WithLabelValues(
 					"local", "fail",
 				).Add(1.0)
-				rr.Status = "failed"
+				lr.Status = "failed"
 			} else {
 				logger.Info(
 					"Successfully get the object",
@@ -126,7 +132,7 @@ func runEcho() {
 				metrics.IpfsEchoAttempts.WithLabelValues(
 					"local", "success",
 				).Add(1.0)
-				rr.Status = "success"
+				lr.Status = "success"
 			}
 			lr.Finished()
 			metrics.IpfsEchoHistogram.WithLabelValues(
